@@ -5,6 +5,8 @@ import android.app.Fragment;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.media.MediaPlayer;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -18,11 +20,16 @@ import android.net.wifi.p2p.WifiP2pManager.DnsSdTxtRecordListener;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import bmo.samplewifi.WiFiChatFragment.MessageTarget;
 import bmo.samplewifi.WiFiDirectServicesList.DeviceClickListener;
@@ -31,6 +38,10 @@ import bmo.samplewifi.WiFiDirectServicesList.WiFiDevicesAdapter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import static android.Manifest.permission.RECORD_AUDIO;
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+import static bmo.samplewifi.audioClass.RequestPermissionCode;
 
 /**
  * The main activity for the sample. This activity registers a local service and
@@ -51,6 +62,9 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
     public static final String TXTRECORD_PROP_AVAILABLE = "available";
     public static final String SERVICE_INSTANCE = "wifidirectdemo";
     public static final String SERVICE_REG_TYPE = "_presence._tcp";
+
+    String AudioSavePathInDevice =
+            Environment.getExternalStorageDirectory().getAbsolutePath() + "/AudioRecording3.3gp";
 
     public static final int MESSAGE_READ = 0x400 + 1;
     public static final int MY_HANDLE = 0x400 + 2;
@@ -99,6 +113,36 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
         getFragmentManager().beginTransaction()
                 .add(R.id.container_root, servicesList, "services").commit();
 
+        if(checkPermission()) {
+            Toast.makeText(MainActivity.this, "Permissions OK.",
+                    Toast.LENGTH_LONG).show();
+        } else {
+            requestPermission();
+        }
+
+        Button buttonPlay = (Button) findViewById(R.id.button3);
+        buttonPlay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) throws IllegalArgumentException,
+                    SecurityException, IllegalStateException {
+
+                playSound();
+
+            }
+        });
+    }
+    protected  void playSound() {
+        MediaPlayer mediaPlayer = new MediaPlayer();
+        try {
+            mediaPlayer.setDataSource(AudioSavePathInDevice);
+            mediaPlayer.prepare();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        mediaPlayer.start();
+        Toast.makeText(MainActivity.this, "Playing sound",
+                Toast.LENGTH_LONG).show();
     }
 
     @Override
@@ -280,6 +324,7 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
                 String readMessage = new String(readBuf, 0, msg.arg1);
                 Log.d(TAG, readMessage);
                 (chatFragment).pushMessage("Buddy: " + readMessage);
+                playSound();
                 break;
 
             case MY_HANDLE:
@@ -339,5 +384,41 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
     public void appendStatus(String status) {
         String current = statusTxtView.getText().toString();
         statusTxtView.setText(current + "\n" + status);
+    }
+
+    private void requestPermission() {
+        ActivityCompat.requestPermissions(MainActivity.this, new
+                String[]{WRITE_EXTERNAL_STORAGE, RECORD_AUDIO}, RequestPermissionCode);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case RequestPermissionCode:
+                if (grantResults.length> 0) {
+                    boolean StoragePermission = grantResults[0] ==
+                            PackageManager.PERMISSION_GRANTED;
+                    boolean RecordPermission = grantResults[1] ==
+                            PackageManager.PERMISSION_GRANTED;
+
+                    if (StoragePermission && RecordPermission) {
+                        Toast.makeText(MainActivity.this, "Permission Granted",
+                                Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(MainActivity.this,"Permission Denied",Toast.LENGTH_LONG).show();
+                    }
+                }
+                break;
+        }
+    }
+
+    public boolean checkPermission() {
+        int result = ContextCompat.checkSelfPermission(getApplicationContext(),
+                WRITE_EXTERNAL_STORAGE);
+        int result1 = ContextCompat.checkSelfPermission(getApplicationContext(),
+                RECORD_AUDIO);
+        return result == PackageManager.PERMISSION_GRANTED &&
+                result1 == PackageManager.PERMISSION_GRANTED;
     }
 }

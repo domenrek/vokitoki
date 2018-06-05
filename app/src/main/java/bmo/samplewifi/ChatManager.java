@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.Arrays;
 
 /**
  * Handles reading and writing of messages with socket buffers. Uses a Handler
@@ -66,6 +67,7 @@ public class ChatManager implements Runnable {
     }
 
     public void write(byte[] buffer) {
+        Log.d(TAG, "Bytes: "+ Arrays.toString(buffer));
         try {
             oStream.write(buffer);
         } catch (IOException e) {

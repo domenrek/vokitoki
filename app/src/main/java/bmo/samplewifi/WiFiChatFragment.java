@@ -3,7 +3,10 @@ package bmo.samplewifi;
 
 import android.app.Fragment;
 import android.content.Context;
+import android.media.MediaRecorder;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -11,7 +14,12 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +35,9 @@ public class WiFiChatFragment extends Fragment {
     private ListView listView;
     ChatMessageAdapter adapter = null;
     private List<String> items = new ArrayList<String>();
-
+    // recorder
+    MediaRecorder mediaRecorder ;
+    String AudioSavePathInDevice = Environment.getExternalStorageDirectory().getAbsolutePath() + "/AudioRecording3.3gp";
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -37,21 +47,94 @@ public class WiFiChatFragment extends Fragment {
         adapter = new ChatMessageAdapter(getActivity(), android.R.id.text1,
                 items);
         listView.setAdapter(adapter);
+
         view.findViewById(R.id.button1).setOnClickListener(
                 new View.OnClickListener() {
 
                     @Override
                     public void onClick(View arg0) {
                         if (chatManager != null) {
+
+                            /* audio test*/
+
+
+                            /* audio test
+
+
+                           chatManager.write(chatLine.getText().toString()
+                                    .getBytes());
+                            pushMessage("Me: " + chatLine.getText().toString());
+                            chatLine.setText("");
+                            chatLine.clearFocus();
+
+                            */
+                            Toast.makeText(getActivity(), "Recording started",
+                                    Toast.LENGTH_LONG).show();
+                            MediaRecorderReady();
+
+                            try {
+                                mediaRecorder.prepare();
+                                mediaRecorder.start();
+                            } catch (IllegalStateException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            } catch (IOException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }
+        );
+        view.findViewById(R.id.button2).setOnClickListener(
+                new View.OnClickListener() {
+
+                    @Override
+                    public void onClick(View arg0) {
+                        if (chatManager != null) {
+
+                            /* audio test*/
+                            mediaRecorder.stop();
+
+
+                            Toast.makeText(getActivity(), "Recording Completed",
+                                    Toast.LENGTH_LONG).show();
+
+                            /* audio test
+
+
                             chatManager.write(chatLine.getText().toString()
                                     .getBytes());
                             pushMessage("Me: " + chatLine.getText().toString());
                             chatLine.setText("");
                             chatLine.clearFocus();
+
+                            */
                         }
                     }
-                });
+                }
+        );
         return view;
+    }
+    public void MediaRecorderReady(){
+        mediaRecorder=new MediaRecorder();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        mediaRecorder.setAudioEncoder(MediaRecorder.OutputFormat.AMR_NB);
+        mediaRecorder.setOutputFile(AudioSavePathInDevice);
+    }
+
+    public byte[] toByteArray(InputStream in) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int read = 0;
+        byte[] buffer = new byte[1024];
+        while (read != -1) {
+            read = in.read(buffer);
+            if (read != -1)
+                out.write(buffer,0,read);
+        }
+        out.close();
+        return out.toByteArray();
     }
 
     public interface MessageTarget {

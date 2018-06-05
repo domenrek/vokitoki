@@ -35,9 +35,9 @@ public class audioClass {
         view = inflater.inflate(R.layout.fragment_chat, container, false);
 
         buttonStart = (Button) view.findViewById(R.id.button1);
-        buttonStop = (Button) view.findViewById(R.id.button2);
-        buttonPlayLastRecordAudio = (Button) view.findViewById(R.id.button3);
-        buttonStopPlayingRecording = (Button)view.findViewById(R.id.button4);
+  //      buttonStop = (Button) view.findViewById(R.id.button2);
+    //    buttonPlayLastRecordAudio = (Button) view.findViewById(R.id.button3);
+     //   buttonStopPlayingRecording = (Button)view.findViewById(R.id.button4);
 
         buttonStop.setEnabled(false);
         buttonPlayLastRecordAudio.setEnabled(false);
