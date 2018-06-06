@@ -34,28 +34,32 @@ public class ChatManager implements Runnable {
 
             iStream = socket.getInputStream();
             oStream = socket.getOutputStream();
-            byte[] buffer = new byte[65536];
-            int bytes;
+            byte[] buffer2 = new byte[65536];
+            byte[] buffer = new byte[1024];
+            int bytes, bytes2 = 0;
             handler.obtainMessage(MainActivity.MY_HANDLE, this)
                     .sendToTarget();
 
             while (true) {
                 try {
                     // Read from the InputStream
-                    bytes = iStream.read(buffer);
+                    bytes = iStream.read(buffer,0,1024);
                     Log.d("CFAKINGMONNNNNNNNNNNNNN", "Prejeti byti v chatmanagerju:\n" + Arrays.toString(buffer));
                     if (bytes == -1) {
                         break;
                     }
-
+                    buffer2 = concat(buffer2, buffer);
+                    bytes2 += bytes;
                     // Send the obtained bytes to the UI Activity
                     Log.d(TAG, "Rec:" + String.valueOf(buffer));
                     handler.obtainMessage(MainActivity.MESSAGE_READ,
                             bytes, -1, buffer).sendToTarget();
-                    break;
+                //    break;
                 } catch (IOException e) {
                     Log.e(TAG, "disconnected", e);
                 }
+                handler.obtainMessage(MainActivity.MESSAGE_READ,
+                        bytes2, -1, buffer).sendToTarget();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -66,6 +70,12 @@ public class ChatManager implements Runnable {
                 e.printStackTrace();
             }
         }
+    }
+
+    public static byte[]  concat(byte[] first, byte[] second) {
+        byte[] result = Arrays.copyOf(first, first.length + second.length);
+        System.arraycopy(second, 0, result, first.length, second.length);
+        return result;
     }
 
     public void write(byte[] buffer) {
