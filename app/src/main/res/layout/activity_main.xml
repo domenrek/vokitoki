@@ -28,6 +28,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Play" />
+
+            <EditText
+                android:id="@+id/textView1"
+                android:layout_width="match_parent"
+                android:layout_height="136dp"
+                android:text="TextView" />
         </LinearLayout>
 
         <TextView

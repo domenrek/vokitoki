@@ -25,17 +25,26 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.apache.commons.io.FileUtils;
+
 import bmo.samplewifi.WiFiChatFragment.MessageTarget;
 import bmo.samplewifi.WiFiDirectServicesList.DeviceClickListener;
 import bmo.samplewifi.WiFiDirectServicesList.WiFiDevicesAdapter;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -63,8 +72,12 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
     public static final String SERVICE_INSTANCE = "wifidirectdemo";
     public static final String SERVICE_REG_TYPE = "_presence._tcp";
 
+    // audio
     String AudioSavePathInDevice =
-            Environment.getExternalStorageDirectory().getAbsolutePath() + "/AudioRecording3.3gp";
+            Environment.getExternalStorageDirectory().getAbsolutePath() + "/AudioRecording5.3gp";
+    String AudioSavePathInDevice2 =
+            Environment.getExternalStorageDirectory().getAbsolutePath() + "/AudioRecording6.3gp";
+    MediaPlayer mediaPlayer ;
 
     public static final int MESSAGE_READ = 0x400 + 1;
     public static final int MY_HANDLE = 0x400 + 2;
@@ -82,6 +95,7 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
     private WiFiDirectServicesList servicesList;
 
     private TextView statusTxtView;
+    private  TextView txtTest;
 
     public Handler getHandler() {
         return handler;
@@ -97,6 +111,7 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         statusTxtView = (TextView) findViewById(R.id.status_text);
+        txtTest = (TextView) findViewById(R.id.textView1);
 
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
@@ -126,24 +141,68 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
             public void onClick(View view) throws IllegalArgumentException,
                     SecurityException, IllegalStateException {
 
-                playSound();
+             //   playSound();
+                mediaPlayer.stop();
+                mediaPlayer.release();
 
             }
         });
     }
-    protected  void playSound() {
-        MediaPlayer mediaPlayer = new MediaPlayer();
+    protected void playSound(byte[] bytes1) {
+        // pretvorimo datoteko ki smo jo posneli v array bytov  //
+
+
+        File audioFile = new File(AudioSavePathInDevice);
+        byte bytes[] = new byte[0];
         try {
-            mediaPlayer.setDataSource(AudioSavePathInDevice);
+            bytes = FileUtils.readFileToByteArray(audioFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Log.d(TAG, "Iz fajla v bytih:\n"+ Arrays.toString(bytes));
+
+
+
+        // array bytov pretvorimo nazaj v datoteko in predvajamo //
+    /*
+                File path = new File(getCacheDir()+"/musicfile.3gp");
+
+                FileOutputStream fos = null;
+                try {
+                    fos = new FileOutputStream(path);
+                    fos.write(bytes);
+                    fos.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+    */
+        File path = new File(AudioSavePathInDevice2);
+        FileOutputStream fos = null;
+        try {
+            fos = new FileOutputStream(path);
+            fos.write(bytes);
+            fos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        mediaPlayer = new MediaPlayer();
+
+        try {
+            FileInputStream fis = new FileInputStream(path);
+            //    mediaPlayer.setDataSource(getCacheDir()+"/musicfile.3gp");
+            mediaPlayer.setDataSource(AudioSavePathInDevice2);
             mediaPlayer.prepare();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         mediaPlayer.start();
-        Toast.makeText(MainActivity.this, "Playing sound",
+
+        Toast.makeText(MainActivity.this, " Playing sound",
                 Toast.LENGTH_LONG).show();
     }
+
+
 
     @Override
     protected void onRestart() {
@@ -315,6 +374,59 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
         });
     }
 
+    protected  void playSound1(byte[] bytes) throws IOException {
+        /*
+        mediaPlayer = new MediaPlayer();
+        try {
+            mediaPlayer.setDataSource(AudioSavePathInDevice);
+            mediaPlayer.prepare();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        mediaPlayer.start();
+        Toast.makeText(MainActivity.this, "Playing sound",
+                Toast.LENGTH_LONG).show();
+
+        */
+        FileOutputStream out= null;
+        try {
+            out = new FileOutputStream(AudioSavePathInDevice2);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        try {
+            out.write(bytes);
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        // array bytov pretvorimo nazaj v datoteko in predvajamo //
+            txtTest.setText("Received bytes:\n"+Arrays.toString(bytes));
+        Log.d("PLAYSOUND", "Byti:s\n"+ Arrays.toString(bytes));
+        //      File path = new File(getCacheDir()+"/musicfile.3gp");
+    /*    File path = new File(AudioSavePathInDevice);
+        FileOutputStream fos = null;
+        try {
+            fos = new FileOutputStream(path);
+            fos.write(bytes);
+            fos.close();
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setDataSource(AudioSavePathInDevice);
+            mediaPlayer.prepare();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    */
+        mediaPlayer = new MediaPlayer();
+        mediaPlayer.setDataSource(AudioSavePathInDevice2);
+        mediaPlayer.prepare();
+        mediaPlayer.start();
+        Toast.makeText(MainActivity.this, "Recording Playing",
+                Toast.LENGTH_LONG).show();
+    }
+
     @Override
     public boolean handleMessage(Message msg) {
         switch (msg.what) {
@@ -322,9 +434,20 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
                 byte[] readBuf = (byte[]) msg.obj;
                 // construct a string from the valid bytes in the buffer
                 String readMessage = new String(readBuf, 0, msg.arg1);
-                Log.d(TAG, readMessage);
-                (chatFragment).pushMessage("Buddy: " + readMessage);
-                playSound();
+    //            Log.d(TAG, readMessage);
+    //            (chatFragment).pushMessage("Buddy: " + readMessage);
+                Log.d("HANDLEMESSAGE", "readBuff :\n"+ Arrays.toString(readBuf));
+                Log.d("ENCODEDSTRING", "string encoded:\n"+ readMessage);
+                byte[] bytes = new byte[0];
+                // dekodiramo
+                byte[] decoded = Base64.decode(readMessage, 0);
+                Log.d("HANDLEMESSAGEDecoded", "decoded:\n"+ Arrays.toString(decoded));
+
+                try {
+                    playSound1(decoded);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 break;
 
             case MY_HANDLE:

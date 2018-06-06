@@ -34,7 +34,7 @@ public class ChatManager implements Runnable {
 
             iStream = socket.getInputStream();
             oStream = socket.getOutputStream();
-            byte[] buffer = new byte[1024];
+            byte[] buffer = new byte[65536];
             int bytes;
             handler.obtainMessage(MainActivity.MY_HANDLE, this)
                     .sendToTarget();
@@ -43,6 +43,7 @@ public class ChatManager implements Runnable {
                 try {
                     // Read from the InputStream
                     bytes = iStream.read(buffer);
+                    Log.d("CFAKINGMONNNNNNNNNNNNNN", "Prejeti byti v chatmanagerju:\n" + Arrays.toString(buffer));
                     if (bytes == -1) {
                         break;
                     }
@@ -51,6 +52,7 @@ public class ChatManager implements Runnable {
                     Log.d(TAG, "Rec:" + String.valueOf(buffer));
                     handler.obtainMessage(MainActivity.MESSAGE_READ,
                             bytes, -1, buffer).sendToTarget();
+                    break;
                 } catch (IOException e) {
                     Log.e(TAG, "disconnected", e);
                 }
@@ -67,7 +69,7 @@ public class ChatManager implements Runnable {
     }
 
     public void write(byte[] buffer) {
-        Log.d(TAG, "Bytes: "+ Arrays.toString(buffer));
+        Log.d(TAG, "Bytes to write: \n"+ Arrays.toString(buffer));
         try {
             oStream.write(buffer);
         } catch (IOException e) {

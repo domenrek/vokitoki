@@ -8,6 +8,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.util.Base64;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,11 +18,16 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.apache.commons.io.FileUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -35,9 +42,15 @@ public class WiFiChatFragment extends Fragment {
     private ListView listView;
     ChatMessageAdapter adapter = null;
     private List<String> items = new ArrayList<String>();
+
     // recorder
     MediaRecorder mediaRecorder ;
-    String AudioSavePathInDevice = Environment.getExternalStorageDirectory().getAbsolutePath() + "/AudioRecording3.3gp";
+    String AudioSavePathInDevice = Environment.getExternalStorageDirectory().getAbsolutePath() + "/AudioRecording7.3gp";
+    String AudioSavePathInDevice3 = Environment.getExternalStorageDirectory().getAbsolutePath() + "/AudioRecording3.3gp";
+    private  TextView txtTest;
+    String encoded;
+    File file ;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -47,6 +60,7 @@ public class WiFiChatFragment extends Fragment {
         adapter = new ChatMessageAdapter(getActivity(), android.R.id.text1,
                 items);
         listView.setAdapter(adapter);
+        txtTest = (TextView) view.findViewById(R.id.text_test);
 
         view.findViewById(R.id.button1).setOnClickListener(
                 new View.OnClickListener() {
@@ -96,7 +110,36 @@ public class WiFiChatFragment extends Fragment {
                             /* audio test*/
                             mediaRecorder.stop();
 
+                            File audioFile = new File(AudioSavePathInDevice);
+                            byte bytes[] = new byte[0];
+                            try {
+                                bytes = FileUtils.readFileToByteArray(audioFile);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            // kodiramo byte
+                            FileInputStream in= null;
+                            try {
+                                in = new FileInputStream(file=new File(AudioSavePathInDevice));
+                            } catch (FileNotFoundException e) {
+                                e.printStackTrace();
+                            }
+                            byte fileContent[] = new byte[(int)file.length()];
 
+                            try {
+                                in.read(fileContent,0,fileContent.length);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            encoded = Base64.encodeToString(fileContent,0);
+                            Log.d("ENCODE", "encoded:"+encoded);
+
+                            // posljemo byte
+                            txtTest.setText("Bytes to send:\n"+Arrays.toString(bytes));
+                            chatManager.write(encoded.getBytes());
+
+                            Log.d("WIFICHATFRAGMENT", "Posneto v bytih:\n"+ Arrays.toString(bytes));
                             Toast.makeText(getActivity(), "Recording Completed",
                                     Toast.LENGTH_LONG).show();
 
