@@ -6,7 +6,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioRecord;
+import android.media.AudioTrack;
 import android.media.MediaPlayer;
+import android.media.MediaRecorder;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -77,6 +82,8 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
             Environment.getExternalStorageDirectory().getAbsolutePath() + "/AudioRecording5.3gp";
     String AudioSavePathInDevice2 =
             Environment.getExternalStorageDirectory().getAbsolutePath() + "/AudioRecording6.3gp";
+    String AudioSavePathInDevice3 =
+            Environment.getExternalStorageDirectory().getAbsolutePath() + "/voice8K16bitmono.pcm";
     MediaPlayer mediaPlayer ;
 
     public static final int MESSAGE_READ = 0x400 + 1;
@@ -96,6 +103,20 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
 
     private TextView statusTxtView;
     private  TextView txtTest;
+
+    // audio
+    private ChatManager chatManager;
+    private static final int RECORDER_SAMPLERATE = 22050;
+    private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
+    private static final int PLAYER_CHANNELS = AudioFormat.CHANNEL_OUT_MONO;
+    private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+    private AudioRecord recorder = null;
+    private Thread recordingThread = null;
+    private boolean isRecording = false;
+    int BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
+    int BytesPerElement = 2;
+
+    private AudioTrack audioTrack = null;
 
     public Handler getHandler() {
         return handler;
@@ -135,19 +156,78 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
             requestPermission();
         }
 
-        Button buttonPlay = (Button) findViewById(R.id.button3);
-        buttonPlay.setOnClickListener(new View.OnClickListener() {
+        Button buttonRec = (Button) findViewById(R.id.button3);
+        buttonRec.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) throws IllegalArgumentException,
                     SecurityException, IllegalStateException {
 
-             //   playSound();
-                mediaPlayer.stop();
-                mediaPlayer.release();
+                recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
+                        RECORDER_SAMPLERATE, RECORDER_CHANNELS,
+                        RECORDER_AUDIO_ENCODING, BufferElements2Rec * BytesPerElement);
+
+                recorder.startRecording();
+                isRecording = true;
+                recordingThread = new Thread(new Runnable() {
+                    public void run() {
+                        writeAudioDataToFile();
+                    }
+                }, "AudioRecorder Thread");
+                recordingThread.start();
 
             }
         });
+        Button buttonStop = (Button) findViewById(R.id.button4);
+        buttonStop.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) throws IllegalArgumentException,
+                    SecurityException, IllegalStateException {
+
+                // audiorecorder stops recording
+                if (null != recorder) {
+                    isRecording = false;
+                    recorder.stop();
+                    recorder.release();
+                    recorder = null;
+                    recordingThread = null;
+                    Toast.makeText(MainActivity.this, "Stop audio recorder",
+                            Toast.LENGTH_LONG).show();
+
+                };
+
+            }
+        });
+
     }
+
+    //convert short to byte
+    private byte[] short2byte(short[] sData) {
+        int shortArrsize = sData.length;
+        byte[] bytes = new byte[shortArrsize * 2];
+        for (int i = 0; i < shortArrsize; i++) {
+            bytes[i * 2] = (byte) (sData[i] & 0x00FF);
+            bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
+            sData[i] = 0;
+        }
+        return bytes;
+
+    }
+
+    private void writeAudioDataToFile() {
+        // Write the output audio in byte
+
+        short sData[] = new short[BufferElements2Rec];
+
+        while (isRecording) {
+            // gets the voice output from microphone to byte format
+
+            recorder.read(sData, 0, BufferElements2Rec);
+        //    System.out.println("Short wirting to file" + sData.toString());
+            chatManager.write(short2byte(sData));
+
+        }
+    }
+
     protected void playSound(byte[] bytes1) {
         // pretvorimo datoteko ki smo jo posneli v array bytov  //
 
@@ -374,56 +454,25 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
         });
     }
 
-    protected  void playSound1(byte[] bytes) throws IOException {
-        /*
-        mediaPlayer = new MediaPlayer();
-        try {
-            mediaPlayer.setDataSource(AudioSavePathInDevice);
-            mediaPlayer.prepare();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    protected  void playSound1(byte[] buffer) {
+       if(audioTrack != null) {
+           audioTrack.release();
 
-        mediaPlayer.start();
+       }
+
+        audioTrack = new AudioTrack(
+                AudioManager.STREAM_MUSIC,
+                RECORDER_SAMPLERATE,
+                PLAYER_CHANNELS,
+                RECORDER_AUDIO_ENCODING,
+                buffer.length,
+                AudioTrack.MODE_STATIC);
+        audioTrack.write(buffer, 0, buffer.length);
+        //audioTrack.setNotificationMarkerPosition(buffer.length);
+        //    audioTrack.setPlaybackPositionUpdateListener(this);
+            audioTrack.play();
+
         Toast.makeText(MainActivity.this, "Playing sound",
-                Toast.LENGTH_LONG).show();
-
-        */
-        FileOutputStream out= null;
-        try {
-            out = new FileOutputStream(AudioSavePathInDevice2);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-        try {
-            out.write(bytes);
-            out.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        // array bytov pretvorimo nazaj v datoteko in predvajamo //
-            txtTest.setText("Received bytes:\n"+Arrays.toString(bytes));
-        Log.d("PLAYSOUND", "Byti:s\n"+ Arrays.toString(bytes));
-        //      File path = new File(getCacheDir()+"/musicfile.3gp");
-    /*    File path = new File(AudioSavePathInDevice);
-        FileOutputStream fos = null;
-        try {
-            fos = new FileOutputStream(path);
-            fos.write(bytes);
-            fos.close();
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setDataSource(AudioSavePathInDevice);
-            mediaPlayer.prepare();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    */
-        mediaPlayer = new MediaPlayer();
-        mediaPlayer.setDataSource(AudioSavePathInDevice2);
-        mediaPlayer.prepare();
-        mediaPlayer.start();
-        Toast.makeText(MainActivity.this, "Recording Playing",
                 Toast.LENGTH_LONG).show();
     }
 
@@ -433,7 +482,7 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
             case MESSAGE_READ:
                 byte[] readBuf = (byte[]) msg.obj;
                 // construct a string from the valid bytes in the buffer
-                String readMessage = new String(readBuf, 0, msg.arg1);
+ /*               String readMessage = new String(readBuf, 0, msg.arg1);
     //            Log.d(TAG, readMessage);
     //            (chatFragment).pushMessage("Buddy: " + readMessage);
                 Log.d("HANDLEMESSAGE", "readBuff :\n"+ Arrays.toString(readBuf));
@@ -443,20 +492,20 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
                 byte[] decoded = Base64.decode(readMessage, 0);
                 Log.d("HANDLEMESSAGEDecoded", "decoded:\n"+ Arrays.toString(decoded));
 
-                try {
-                    playSound1(decoded);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+*/
+                    playSound1(readBuf);
+
                 break;
 
             case MY_HANDLE:
                 Object obj = msg.obj;
-                (chatFragment).setChatManager((ChatManager) obj);
+                chatManager = (ChatManager)obj;
+            //    (chatFragment).setChatManager((ChatManager) obj);
 
         }
         return true;
     }
+
 
     @Override
     public void onResume() {
