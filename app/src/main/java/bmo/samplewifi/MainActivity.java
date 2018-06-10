@@ -32,6 +32,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Base64;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -105,8 +106,9 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
     private  TextView txtTest;
 
     // audio
+    Button holdButton;
     private ChatManager chatManager;
-    private static final int RECORDER_SAMPLERATE = 22050;
+    private static final int RECORDER_SAMPLERATE = 44100;
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
     private static final int PLAYER_CHANNELS = AudioFormat.CHANNEL_OUT_MONO;
     private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
@@ -132,7 +134,7 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         statusTxtView = (TextView) findViewById(R.id.status_text);
-        txtTest = (TextView) findViewById(R.id.textView1);
+    //    txtTest = (TextView) findViewById(R.id.textView1);
 
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
@@ -151,11 +153,11 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
 
         if(checkPermission()) {
             Toast.makeText(MainActivity.this, "Permissions OK.",
-                    Toast.LENGTH_LONG).show();
+                    Toast.LENGTH_SHORT).show();
         } else {
             requestPermission();
         }
-
+/*
         Button buttonRec = (Button) findViewById(R.id.button3);
         buttonRec.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -177,7 +179,7 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
 
             }
         });
-        Button buttonStop = (Button) findViewById(R.id.button4);
+        Button buttonStop = (Button) findViewById(R.id.button3);
         buttonStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) throws IllegalArgumentException,
@@ -197,7 +199,43 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
 
             }
         });
+        */
+        holdButton = (Button) findViewById(R.id.button3);
+        holdButton.setVisibility(View.GONE);
+        holdButton.setOnTouchListener(new View.OnTouchListener() {
 
+            @Override
+            public boolean onTouch(View view, MotionEvent motionevent) {
+                int action = motionevent.getAction();
+                if (action == MotionEvent.ACTION_DOWN) {
+                    recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
+                            RECORDER_SAMPLERATE, RECORDER_CHANNELS,
+                            RECORDER_AUDIO_ENCODING, BufferElements2Rec * BytesPerElement);
+
+                    recorder.startRecording();
+                    isRecording = true;
+                    recordingThread = new Thread(new Runnable() {
+                        public void run() {
+                            writeAudioDataToFile();
+                        }
+                    }, "AudioRecorder Thread");
+                    recordingThread.start();
+                } else if (action == MotionEvent.ACTION_UP) {
+                    // audiorecorder stops recording
+                    if (null != recorder) {
+                        isRecording = false;
+                        recorder.stop();
+                        recorder.release();
+                        recorder = null;
+                        recordingThread = null;
+                        Toast.makeText(MainActivity.this, "Stop audio recorder",
+                                Toast.LENGTH_LONG).show();
+
+                    };
+                }//end else
+                return false;
+            } //end onTouch
+        }); //end b my button
     }
 
     //convert short to byte
@@ -227,62 +265,6 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
 
         }
     }
-
-    protected void playSound(byte[] bytes1) {
-        // pretvorimo datoteko ki smo jo posneli v array bytov  //
-
-
-        File audioFile = new File(AudioSavePathInDevice);
-        byte bytes[] = new byte[0];
-        try {
-            bytes = FileUtils.readFileToByteArray(audioFile);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        Log.d(TAG, "Iz fajla v bytih:\n"+ Arrays.toString(bytes));
-
-
-
-        // array bytov pretvorimo nazaj v datoteko in predvajamo //
-    /*
-                File path = new File(getCacheDir()+"/musicfile.3gp");
-
-                FileOutputStream fos = null;
-                try {
-                    fos = new FileOutputStream(path);
-                    fos.write(bytes);
-                    fos.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-    */
-        File path = new File(AudioSavePathInDevice2);
-        FileOutputStream fos = null;
-        try {
-            fos = new FileOutputStream(path);
-            fos.write(bytes);
-            fos.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        mediaPlayer = new MediaPlayer();
-
-        try {
-            FileInputStream fis = new FileInputStream(path);
-            //    mediaPlayer.setDataSource(getCacheDir()+"/musicfile.3gp");
-            mediaPlayer.setDataSource(AudioSavePathInDevice2);
-            mediaPlayer.prepare();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        mediaPlayer.start();
-
-        Toast.makeText(MainActivity.this, " Playing sound",
-                Toast.LENGTH_LONG).show();
-    }
-
-
 
     @Override
     protected void onRestart() {
@@ -472,8 +454,7 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
         //    audioTrack.setPlaybackPositionUpdateListener(this);
             audioTrack.play();
 
-        Toast.makeText(MainActivity.this, "Playing sound",
-                Toast.LENGTH_LONG).show();
+        //Toast.makeText(MainActivity.this, "Playing sound", Toast.LENGTH_LONG).show();
     }
 
     @Override
@@ -481,18 +462,7 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
         switch (msg.what) {
             case MESSAGE_READ:
                 byte[] readBuf = (byte[]) msg.obj;
-                // construct a string from the valid bytes in the buffer
- /*               String readMessage = new String(readBuf, 0, msg.arg1);
-    //            Log.d(TAG, readMessage);
-    //            (chatFragment).pushMessage("Buddy: " + readMessage);
-                Log.d("HANDLEMESSAGE", "readBuff :\n"+ Arrays.toString(readBuf));
-                Log.d("ENCODEDSTRING", "string encoded:\n"+ readMessage);
-                byte[] bytes = new byte[0];
-                // dekodiramo
-                byte[] decoded = Base64.decode(readMessage, 0);
-                Log.d("HANDLEMESSAGEDecoded", "decoded:\n"+ Arrays.toString(decoded));
 
-*/
                     playSound1(readBuf);
 
                 break;
@@ -547,10 +517,13 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
                     p2pInfo.groupOwnerAddress);
             handler.start();
         }
-        chatFragment = new WiFiChatFragment();
-        getFragmentManager().beginTransaction()
-                .replace(R.id.container_root, chatFragment).commit();
-        statusTxtView.setVisibility(View.GONE);
+
+    //    chatFragment = new WiFiChatFragment();
+    //    getFragmentManager().beginTransaction()
+      //          .replace(R.id.container_root, chatFragment).commit();
+        //statusTxtView.setVisibility(View.GONE);
+        holdButton.setVisibility(View.VISIBLE);
+        statusTxtView.setText("Connetcted to peer. Start talking by holding the button.");
     }
 
     public void appendStatus(String status) {
