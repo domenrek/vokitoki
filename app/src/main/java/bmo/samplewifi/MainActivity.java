@@ -108,7 +108,7 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
     // audio
     Button holdButton;
     private ChatManager chatManager;
-    private static final int RECORDER_SAMPLERATE = 44100;
+    private static final int RECORDER_SAMPLERATE = 8000;
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
     private static final int PLAYER_CHANNELS = AudioFormat.CHANNEL_OUT_MONO;
     private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
@@ -117,6 +117,7 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
     private boolean isRecording = false;
     int BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
     int BytesPerElement = 2;
+    int bufferSize;
 
     private AudioTrack audioTrack = null;
 
@@ -157,6 +158,9 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
         } else {
             requestPermission();
         }
+
+        bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
+                RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
 /*
         Button buttonRec = (Button) findViewById(R.id.button3);
         buttonRec.setOnClickListener(new View.OnClickListener() {
@@ -210,13 +214,13 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
                 if (action == MotionEvent.ACTION_DOWN) {
                     recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
                             RECORDER_SAMPLERATE, RECORDER_CHANNELS,
-                            RECORDER_AUDIO_ENCODING, BufferElements2Rec * BytesPerElement);
+                            RECORDER_AUDIO_ENCODING, bufferSize);
 
                     recorder.startRecording();
                     isRecording = true;
                     recordingThread = new Thread(new Runnable() {
                         public void run() {
-                            writeAudioDataToFile();
+                            writeAudioData();
                         }
                     }, "AudioRecorder Thread");
                     recordingThread.start();
@@ -251,15 +255,15 @@ public class MainActivity extends Activity implements DeviceClickListener, Handl
 
     }
 
-    private void writeAudioDataToFile() {
+    private void writeAudioData() {
         // Write the output audio in byte
 
-        short sData[] = new short[BufferElements2Rec];
+        short sData[] = new short[bufferSize];
 
         while (isRecording) {
             // gets the voice output from microphone to byte format
 
-            recorder.read(sData, 0, BufferElements2Rec);
+            recorder.read(sData, 0, bufferSize);
         //    System.out.println("Short wirting to file" + sData.toString());
             chatManager.write(short2byte(sData));
 
